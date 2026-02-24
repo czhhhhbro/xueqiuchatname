@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>雪球HOME</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  body {
+    background: #f7f8fa;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ========== 顶部导航栏 ========== */
+  .navbar {
+    background: #ffffff;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .menu {
+    display: flex;
+    gap: 16px;
+  }
+
+  .menu button {
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: none;
+    background: #f0f0f5;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .user-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7B61FF, #9D85FE);
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ========== 登录弹窗 ========== */
+  .login-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .login-box {
+    background: white;
+    padding: 30px;
+    border-radius: 24px;
+    width: 90%;
+    max-width: 380px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  .login-box h2 {
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  .login-input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 16px;
+    border: 1px solid #eee;
+    margin-bottom: 16px;
+    font-size: 15px;
+    outline: none;
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 16px;
+    background: #7B61FF;
+    color: white;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ========== 聊天区域 ========== */
+  .chat-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 仿Telegram消息气泡 */
+  .message {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 20px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+
+  .message.self {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #7B61FF, #9277FF);
+    color: white;
+    border-bottom-right-radius: 8px;
+  }
+
+  .message.other {
+    align-self: flex-start;
+    background: #ffffff;
+    color: #222;
+    border-bottom-left-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  .username {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+
+  /* ========== 输入框 ========== */
+  .input-bar {
+    display: flex;
+    padding: 12px 16px;
+    gap: 10px;
+    background: white;
+  }
+
+  #msgInput {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 24px;
+    border: 1px solid #eee;
+    outline: none;
+    font-size: 15px;
+  }
+
+  .send-btn {
+    padding: 14px 22px;
+    border-radius: 24px;
+    background: #7B61FF;
+    color: white;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- 登录弹窗 -->
+<div class="login-modal" id="loginModal">
+  <div class="login-box">
+    <h2>进入聊天室</h2>
+    <input type="text" class="login-input" id="username" placeholder="输入你的用户名">
+    <button class="login-btn" onclick="login()">确认登录</button>
+  </div>
+</div>
+
+<!-- 顶部导航 -->
+<div class="navbar">
+  <div class="menu">
+    <button>首页</button>
+    <button>公共聊天室</button>
+    <button>设置</button>
+  </div>
+  <button class="user-btn" id="userBtn">?</button>
+</div>
+
+<!-- 聊天内容 -->
+<div class="chat-container" id="chatBox"></div>
+
+<!-- 输入框 -->
+<div class="input-bar">
+  <input type="text" id="msgInput" placeholder="输入消息...">
+  <button class="send-btn" onclick="sendMessage()">发送</button>
+</div>
+
+<script>
+  let myUsername = ''
+  const chatBox = document.getElementById('chatBox')
+  const loginModal = document.getElementById('loginModal')
+  const userBtn = document.getElementById('userBtn')
+
+  // 进入页面先登录
+  window.onload = function () {
+    const localUser = localStorage.getItem('username')
+    if (localUser) {
+      myUsername = localUser
+      loginModal.style.display = 'none'
+      userBtn.innerText = localUser.charAt(0)
+      loadMessages()
+    }
+  }
+
+  // 登录
+  function login() {
+    const user = document.getElementById('username').value.trim()
+    if (!user) return alert('请输入用户名')
+    myUsername = user
+    localStorage.setItem('username', user)
+    userBtn.innerText = user.charAt(0)
+    loginModal.style.display = 'none'
+    loadMessages()
+  }
+
+  // 发送消息
+  async function sendMessage() {
+    if (!myUsername) return loginModal.style.display = 'flex'
+    const content = document.getElementById('msgInput').value.trim()
+    if (!content) return
+
+    await fetch('/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: myUsername,
+        content: content,
+        self: true
+      })
+    })
+
+    document.getElementById('msgInput').value = ''
+    loadMessages()
+  }
+
+  // 加载消息
+  async function loadMessages() {
+    if (!myUsername) return
+    const res = await fetch('/messages')
+    const messages = await res.json()
+    chatBox.innerHTML = ''
+
+    messages.forEach(msg => {
+      const div = document.createElement('div')
+      const isSelf = msg.username === myUsername
+      div.className = 'message ' + (isSelf ? 'self' : 'other')
+
+      div.innerHTML = `
+        <div class="username">${msg.username}</div>
+        <div>${msg.content}</div>
+      `
+      chatBox.appendChild(div)
+    })
+
+    chatBox.scrollTop = chatBox.scrollHeight
+  }
+
+  // 自动刷新
+  setInterval(loadMessages, 1500)
+</script>
+</body>
+</html>
